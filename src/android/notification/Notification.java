@@ -21,7 +21,9 @@
 
 package de.appplant.cordova.plugin.notification;
 
+import android.app.ActivityManager;
 import android.app.AlarmManager;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -30,9 +32,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.service.notification.StatusBarNotification;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.util.ArraySet;
-import android.support.v4.util.Pair;
+import androidx.core.app.NotificationCompat;
+import androidx.collection.ArraySet;
+import androidx.core.util.Pair;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -50,9 +52,18 @@ import static android.app.AlarmManager.RTC_WAKEUP;
 import static android.app.PendingIntent.FLAG_CANCEL_CURRENT;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.M;
-import static android.support.v4.app.NotificationCompat.PRIORITY_HIGH;
-import static android.support.v4.app.NotificationCompat.PRIORITY_MAX;
-import static android.support.v4.app.NotificationCompat.PRIORITY_MIN;
+import androidx.core.app.NotificationCompat;
+import static android.os.Build.VERSION_CODES.O;
+import static androidx.core.app.NotificationCompat.PRIORITY_DEFAULT;
+import static androidx.core.app.NotificationCompat.PRIORITY_HIGH;
+import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
+import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
+import static androidx.core.app.NotificationCompat.PRIORITY_MIN;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_DEFAULT;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MIN;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_LOW;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MAX;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_HIGH;
 
 /**
  * Wrapper class around OS notification class. Handles basic operations
@@ -96,10 +107,10 @@ public final class Notification {
      * @param options Parsed notification options.
      * @param builder Pre-configured notification builder.
      */
-    Notification (Context context, Options options, NotificationCompat.Builder builder) {
-        this.context  = context;
-        this.options  = options;
-        this.builder  = builder;
+    Notification(Context context, Options options, NotificationCompat.Builder builder) {
+        this.context = context;
+        this.options = options;
+        this.builder = builder;
     }
 
     /**
@@ -109,9 +120,9 @@ public final class Notification {
      * @param options Parsed notification options.
      */
     public Notification(Context context, Options options) {
-        this.context  = context;
-        this.options  = options;
-        this.builder  = null;
+        this.context = context;
+        this.options = options;
+        this.builder = null;
     }
 
     /**
@@ -153,9 +164,9 @@ public final class Notification {
      * Notification type can be one of triggered or scheduled.
      */
     public Type getType() {
-        Manager mgr                    = Manager.getInstance(context);
+        Manager mgr = Manager.getInstance(context);
         StatusBarNotification[] toasts = mgr.getActiveNotifications();
-        int id                         = getId();
+        int id = getId();
 
         for (StatusBarNotification toast : toasts) {
             if (toast.getId() == id) {
@@ -169,13 +180,13 @@ public final class Notification {
     /**
      * Schedule the local notification.
      *
-     * @param request Set of notification options.
+     * @param request  Set of notification options.
      * @param receiver Receiver to handle the trigger event.
      */
     void schedule(Request request, Class<?> receiver) {
         List<Pair<Date, Intent>> intents = new ArrayList<Pair<Date, Intent>>();
-        Set<String> ids                  = new ArraySet<String>();
-        AlarmManager mgr                 = getAlarmMgr();
+        Set<String> ids = new ArraySet<String>();
+        AlarmManager mgr = getAlarmMgr();
 
         cancelScheduledAlarms();
 
@@ -210,8 +221,8 @@ public final class Notification {
         }
 
         for (Pair<Date, Intent> pair : intents) {
-            Date date     = pair.first;
-            long time     = date.getTime();
+            Date date = pair.first;
+            long time = date.getTime();
             Intent intent = pair.second;
 
             if (!date.after(new Date()) && trigger(intent, receiver))
@@ -222,10 +233,12 @@ public final class Notification {
 
             try {
                 switch (options.getPrio()) {
-                    case PRIORITY_MIN:
+                    case IMPORTANCE_MIN:
+                    case IMPORTANCE_LOW:
                         mgr.setExact(RTC, time, pi);
                         break;
-                    case PRIORITY_MAX:
+                    case IMPORTANCE_MAX:
+                    case IMPORTANCE_HIGH:
                         if (SDK_INT >= M) {
                             mgr.setExactAndAllowWhileIdle(RTC_WAKEUP, time, pi);
                         } else {
@@ -319,12 +332,118 @@ public final class Notification {
     public void show() {
         if (builder == null) return;
 
+        if (isAppOnForeground(context) && options.getPrio() == 0) {
+            return;
+        }
+
         if (options.showChronometer()) {
             cacheBuilder();
         }
 
         grantPermissionToPlaySoundFromExternal();
         getNotMgr().notify(getId(), builder.build());
+    }
+
+    private boolean isAppOnForeground(Context context) {
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
+        if (appProcesses == null) {
+            return false;
+        }
+        final String packageName = context.getPackageName();
+        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+            if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND && appProcess.processName.equals(packageName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void prepareAndroidOSound() {
+
+        if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.O) {
+//            Uri sound = options.getSound();
+//            if (sound != Uri.EMPTY) {
+//
+//                int importance = IMPORTANCE_DEFAULT;
+//                switch (options.getPrio()) {
+//                    case PRIORITY_MIN:
+//                        importance = IMPORTANCE_MIN;
+//                        break;
+//                    case PRIORITY_LOW:
+//                        importance = IMPORTANCE_LOW;
+//                        break;
+//                    case PRIORITY_DEFAULT:
+//                        importance = IMPORTANCE_DEFAULT;
+//                        break;
+//                    case PRIORITY_HIGH:
+//                        importance = IMPORTANCE_HIGH;
+//                        break;
+//                    case PRIORITY_MAX:
+//                        importance = IMPORTANCE_HIGH;
+//                        break;
+//                }
+//
+//                String id = "my_channel_01";
+//
+//                NotificationChannel channel = getNotMgr().getNotificationChannel(id);
+//
+//                if (channel != null) {
+//                    getNotMgr().deleteNotificationChannel(channel.getId());
+//                }
+//
+//                channel = new NotificationChannel(
+//                        id, options.getChannelDescription(), importance);
+//
+//                channel.setDescription("Channel description");
+//                channel.enableLights(true);
+//                channel.setLightColor(Color.RED);
+//
+//                if (!options.isSilent() && importance > IMPORTANCE_DEFAULT)
+//                    channel.setBypassDnd(true);
+//                if (!options.isWithoutLights()) channel.enableLights(true);
+//                if (options.isWithVibration()) {
+//                    channel.enableVibration(true);
+//                } else {
+//                    channel.setVibrationPattern(new long[]{0});
+//                    channel.enableVibration(true);
+//                }
+//                channel.setLightColor(options.getLedColor());
+//                if (options.isWithoutSound()) {
+//                    channel.setSound(null, null);
+//                } else {
+//
+//
+////                    Resources res = context.getResources();
+////                    AssetManager am = res.getAssets();
+////                    String fileList[] = am.list(dirFrom);
+//
+//
+//                    File file = new File(URI.create(sound.toString()).getPath());
+//                    if (file.exists()) {
+//                        Log.d("NOTIFICATION", "SOUND EXISTS");
+//                    }else{
+//                        Log.d("NOTIFICATION", "SOUND NOT EXISTS!!!!!");
+//                    }
+//
+//                    AudioAttributes audioAttributes = new AudioAttributes.Builder()
+//                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+//                            .setUsage(AudioAttributes.USAGE_NOTIFICATION).build();
+//
+//                    if (true || options.isWithDefaultSound()) {
+//                        channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), audioAttributes);
+//                    } else {
+//                        channel.setSound(options.getSound(), audioAttributes);
+//                    }
+//                }
+//
+////                NotificationChannel notificationChannel = new NotificationChannel(options.getChannel(), options.getChannelDescription(), NotificationManager.IMPORTANCE_HIGH);
+////                notificationChannel.setSound(sound, audioAttributes);
+////                getNotMgr().createNotificationChannel(notificationChannel);
+//
+//                getNotMgr().createNotificationChannel(channel);
+//            }
+        }
     }
 
     /**

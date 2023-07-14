@@ -21,28 +21,28 @@
 
 package de.appplant.cordova.plugin.notification;
 
+import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+import static de.appplant.cordova.plugin.notification.Notification.EXTRA_UPDATE;
+
 import android.app.ActivityManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.media.AudioAttributes;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.media.session.MediaSessionCompat;
+
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationCompat.MessagingStyle.Message;
 import androidx.media.app.NotificationCompat.MediaStyle;
-import android.support.v4.media.session.MediaSessionCompat;
 
 import java.util.List;
 import java.util.Random;
 
 import de.appplant.cordova.plugin.notification.action.Action;
-
-import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
-import static de.appplant.cordova.plugin.notification.Notification.EXTRA_UPDATE;
 
 /**
  * Builder class for local notifications. Build fully configured local
@@ -370,7 +370,7 @@ public final class Builder {
         int reqCode = random.nextInt();
 
         PendingIntent deleteIntent = PendingIntent.getBroadcast(
-                context, reqCode, intent, FLAG_UPDATE_CURRENT);
+                context, reqCode, intent, FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 
         builder.setDeleteIntent(deleteIntent);
     }
@@ -399,7 +399,7 @@ public final class Builder {
         int reqCode = random.nextInt();
 
         PendingIntent contentIntent = PendingIntent.getService(
-                context, reqCode, intent, FLAG_UPDATE_CURRENT);
+                context, reqCode, intent, FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 
         builder.setContentIntent(contentIntent);
     }
@@ -449,7 +449,7 @@ public final class Builder {
         int reqCode = random.nextInt();
 
         return PendingIntent.getService(
-                context, reqCode, intent, FLAG_UPDATE_CURRENT);
+                context, reqCode, intent, FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
     }
 
     /**

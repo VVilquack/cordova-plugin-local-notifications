@@ -21,9 +21,19 @@
 
 package de.appplant.cordova.plugin.notification;
 
+import static android.app.AlarmManager.RTC;
+import static android.app.AlarmManager.RTC_WAKEUP;
+import static android.app.PendingIntent.FLAG_CANCEL_CURRENT;
+import static android.os.Build.VERSION.SDK_INT;
+import static android.os.Build.VERSION_CODES.M;
+import static androidx.core.app.NotificationCompat.PRIORITY_HIGH;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_HIGH;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_LOW;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MAX;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MIN;
+
 import android.app.ActivityManager;
 import android.app.AlarmManager;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -32,11 +42,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.service.notification.StatusBarNotification;
-import androidx.core.app.NotificationCompat;
-import androidx.collection.ArraySet;
-import androidx.core.util.Pair;
 import android.util.Log;
 import android.util.SparseArray;
+
+import androidx.collection.ArraySet;
+import androidx.core.app.NotificationCompat;
+import androidx.core.util.Pair;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -46,24 +57,6 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-
-import static android.app.AlarmManager.RTC;
-import static android.app.AlarmManager.RTC_WAKEUP;
-import static android.app.PendingIntent.FLAG_CANCEL_CURRENT;
-import static android.os.Build.VERSION.SDK_INT;
-import static android.os.Build.VERSION_CODES.M;
-import androidx.core.app.NotificationCompat;
-import static android.os.Build.VERSION_CODES.O;
-import static androidx.core.app.NotificationCompat.PRIORITY_DEFAULT;
-import static androidx.core.app.NotificationCompat.PRIORITY_HIGH;
-import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
-import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
-import static androidx.core.app.NotificationCompat.PRIORITY_MIN;
-import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_DEFAULT;
-import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MIN;
-import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_LOW;
-import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MAX;
-import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_HIGH;
 
 /**
  * Wrapper class around OS notification class. Handles basic operations
@@ -318,7 +311,7 @@ public final class Notification {
             Intent intent = new Intent(action);
 
             PendingIntent pi = PendingIntent.getBroadcast(
-                    context, 0, intent, 0);
+                    context, 0, intent, 0 | PendingIntent.FLAG_MUTABLE);
 
             if (pi != null) {
                 getAlarmMgr().cancel(pi);
